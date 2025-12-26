@@ -1,0 +1,536 @@
+I'll help you build a mobile-friendly JARVIS voice assistant web application. This will be a progressive web app (PWA) that works well on mobile devices.
+
+Project Structure
+
+```
+jarvis-mobile-assistant/
+├── index.html
+├── styles.css
+├── app.js
+├── manifest.json
+├── service-worker.js
+├── icons/
+│   ├── icon-72x72.png
+│   ├── icon-96x96.png
+│   └── icon-144x144.png
+└── sounds/
+    ├── start.mp3
+    └── end.mp3
+```
+
+1. index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JARVIS Mobile Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="icons/icon-72x72.png">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-robot"></i>
+                <h1>JARVIS</h1>
+                <span class="subtitle">Mobile Assistant</span>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Ready</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="assistant-display">
+                <div class="visualizer" id="visualizer">
+                    <div class="pulse"></div>
+                    <div class="assistant-icon">
+                        <i class="fas fa-robot" id="assistantIcon"></i>
+                    </div>
+                </div>
+                
+                <div class="response-display" id="responseDisplay">
+                    <p id="responseText">Hello, I'm JARVIS. How can I assist you today?</p>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn-control" id="voiceBtn">
+                    <i class="fas fa-microphone"></i>
+                    <span>Tap to Speak</span>
+                </button>
+                
+                <div class="secondary-controls">
+                    <button class="btn-icon" id="clearBtn" title="Clear History">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="btn-icon" id="settingsBtn" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="btn-icon" id="helpBtn" title="Help">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="command-history" id="commandHistory">
+                <h3><i class="fas fa-history"></i> Recent Commands</h3>
+                <div class="history-list" id="historyList">
+                    <!-- Command history will be added here dynamically -->
+                </div>
+            </div>
+        </main>
+
+        <div class="notification" id="notification">
+            <p id="notificationText"></p>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+                <button class="close-modal" id="closeSettings">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-item">
+                    <label for="voiceSelect">Assistant Voice</label>
+                    <select id="voiceSelect">
+                        <option value="default">Default Voice</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="soundToggle" checked>
+                        Enable Sounds
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="autoListenToggle">
+                        Auto-listen after response
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label for="responseSpeed">Response Speed</label>
+                    <input type="range" id="responseSpeed" min="0.5" max="2" step="0.1" value="1">
+                    <span id="speedValue">Normal</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal" id="helpModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-question-circle"></i> Help & Commands</h2>
+                <button class="close-modal" id="closeHelp">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="help-section">
+                    <h3>Available Commands:</h3>
+                    <ul class="command-list">
+                        <li><strong>"What time is it?"</strong> - Get current time</li>
+                        <li><strong>"What is today's date?"</strong> - Get current date</li>
+                        <li><strong>"Tell me a joke"</strong> - Hear a random joke</li>
+                        <li><strong>"Set alarm for [time]"</strong> - Set an alarm</li>
+                        <li><strong>"What's the weather?"</strong> - Get weather info</li>
+                        <li><strong>"Open [website]"</strong> - Open a website</li>
+                        <li><strong>"Calculate [expression]"</strong> - Perform calculation</li>
+                        <li><strong>"Search for [query]"</strong> - Search the web</li>
+                        <li><strong>"Note: [your note]"</strong> - Save a note</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3>Tips:</h3>
+                    <ul>
+                        <li>Tap and hold the microphone button for continuous listening</li>
+                        <li>Tap once for single command mode</li>
+                        <li>Speak clearly and at a normal pace</li>
+                        <li>Ensure microphone permissions are granted</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+```
+
+2. styles.css
+
+```css
+:root {
+    --primary-color: #1a1a2e;
+    --secondary-color: #16213e;
+    --accent-color: #0fce7c;
+    --accent-hover: #0db46e;
+    --text-color: #ffffff;
+    --text-secondary: #b0b0b0;
+    --card-bg: rgba(255, 255, 255, 0.1);
+    --border-radius: 20px;
+    --spacing-sm: 10px;
+    --spacing-md: 20px;
+    --spacing-lg: 30px;
+    --transition-speed: 0.3s;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: var(--text-color);
+    min-height: 100vh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    overflow-x: hidden;
+}
+
+.container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header Styles */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    backdrop-filter: blur(10px);
+    margin-bottom: var(--spacing-lg);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo i {
+    font-size: 2rem;
+    color: var(--accent-color);
+}
+
+.logo h1 {
+    font-size: 1.8rem;
+    background: linear-gradient(45deg, var(--accent-color), #4cc9f0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtitle {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #4CAF50;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.assistant-display {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-lg);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.visualizer {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin: 0 auto var(--spacing-lg);
+}
+
+.pulse {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+    opacity: 0.2;
+    animation: pulse-ring 3s infinite;
+}
+
+@keyframes pulse-ring {
+    0% { transform: scale(0.8); opacity: 0.2; }
+    50% { transform: scale(1.2); opacity: 0.1; }
+    100% { transform: scale(0.8); opacity: 0.2; }
+}
+
+.assistant-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--accent-color), #4cc9f0);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    box-shadow: 0 0 30px rgba(15, 206, 124, 0.3);
+}
+
+.response-display {
+    min-height: 80px;
+    padding: var(--spacing-md);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: calc(var(--border-radius) - 5px);
+    border-left: 4px solid var(--accent-color);
+}
+
+#responseText {
+    font-size: 1.1rem;
+    line-height: 1.5;
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.btn-control {
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+    color: white;
+    border: none;
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius);
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all var(--transition-speed);
+    box-shadow: 0 10px 20px rgba(15, 206, 124, 0.3);
+    touch-action: manipulation;
+}
+
+.btn-control:active {
+    transform: scale(0.98);
+    box-shadow: 0 5px 10px rgba(15, 206, 124, 0.3);
+}
+
+.btn-control.listening {
+    background: linear-gradient(135deg, #ff4757, #ff3838);
+    animation: listening-pulse 1s infinite;
+}
+
+@keyframes listening-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+.secondary-controls {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-md);
+}
+
+.btn-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: none;
+    color: var(--text-color);
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-speed);
+}
+
+.btn-icon:active {
+    background: var(--accent-color);
+    transform: scale(0.95);
+}
+
+/* Command History */
+.command-history {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    backdrop-filter: blur(10px);
+}
+
+.command-history h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.history-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 15px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid var(--accent-color);
+}
+
+.history-time {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Notification */
+.notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--accent-color);
+    color: white;
+    padding: 15px 25px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transition: all var(--transition-speed);
+    z-index: 1000;
+}
+
+.notification.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1001;
+    padding: var(--spacing-md);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--primary-color);
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.3rem;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 2rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-body {
+    padding: var(--spacing-md);
+}
+
+.setting-item {
+    margin-bottom: var(--spacing-md);
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.setting-item label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.setting-item select,
